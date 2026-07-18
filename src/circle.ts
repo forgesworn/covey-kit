@@ -105,6 +105,8 @@ export function upsertMember(c: Circle, m: CircleMember, by: string, nowSec: num
   return {
     ...c,
     members: newMembers,
+    configUpdatedAt: nowSec,
+    configBy: by,
   }
 }
 
@@ -112,9 +114,12 @@ export function upsertMember(c: Circle, m: CircleMember, by: string, nowSec: num
  * Remove a member by pk.
  */
 export function removeMember(c: Circle, pk: string, by: string, nowSec: number): Circle {
+  if (!c.members.some((member) => member.pk === pk)) return c
   return {
     ...c,
     members: c.members.filter((m) => m.pk !== pk),
+    configUpdatedAt: nowSec,
+    configBy: by,
   }
 }
 
