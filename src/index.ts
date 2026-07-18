@@ -2,6 +2,19 @@ export { fromHex, toHex } from './hex.js'
 
 export { deriveCircleSeed, deriveInbox, personalInboxTag } from './keys.js'
 
+export {
+  createCircle,
+  circleFromInvite,
+  applyReseed,
+  upsertMember,
+  removeMember,
+  buildConfig,
+  mergeConfig,
+  guardians,
+  isGuardian,
+} from './circle.js'
+export type { Role, CircleMember, Circle, CircleConfig } from './circle.js'
+
 export { LocalSigner, makeLocalSigner } from './signer-local.js'
 
 export {
