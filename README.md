@@ -41,6 +41,9 @@ The word-code path parks only a disposable reference key, not the circle seed.
 The actual invite remains NIP-59 encrypted to that one-time key and the parked
 reference is deleted on successful fetch where the relay honours NIP-09.
 
+Public `compatibility/v1` fixtures freeze derivation, circle-state clock,
+word-code and personal-inbox invite/reseed semantics for consumers.
+
 ## Development
 
 ```bash

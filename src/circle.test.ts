@@ -112,9 +112,12 @@ describe('circle state', () => {
     })
 
     it('adds a new member to the circle', () => {
-      const updated = upsertMember(baseCircle, testChild, testCreator.pk, testNow)
+      const updatedAt = testNow + 50
+      const updated = upsertMember(baseCircle, testChild, testCreator.pk, updatedAt)
       expect(updated.members).toHaveLength(2)
       expect(updated.members).toContainEqual(testChild)
+      expect(updated.configUpdatedAt).toBe(updatedAt)
+      expect(updated.configBy).toBe(testCreator.pk)
     })
 
     it('updates an existing member (by pk)', () => {
@@ -149,11 +152,14 @@ describe('circle state', () => {
     })
 
     it('removes a member by pk', () => {
-      const updated = removeMember(baseCircle, testChild.pk, testCreator.pk, testNow)
+      const updatedAt = testNow + 50
+      const updated = removeMember(baseCircle, testChild.pk, testCreator.pk, updatedAt)
       expect(updated.members).toHaveLength(2)
       expect(updated.members).toContainEqual(testCreator)
       expect(updated.members).toContainEqual(testPeer)
       expect(updated.members.find((m) => m.pk === testChild.pk)).toBeUndefined()
+      expect(updated.configUpdatedAt).toBe(updatedAt)
+      expect(updated.configBy).toBe(testCreator.pk)
     })
 
     it('returns new circle, does not mutate input', () => {
@@ -164,8 +170,7 @@ describe('circle state', () => {
 
     it('does nothing if pk not found', () => {
       const updated = removeMember(baseCircle, '9999999999999999999999999999999999999999999999999999999999999999', testCreator.pk, testNow)
-      expect(updated.members.length).toBe(baseCircle.members.length)
-      expect(updated.members).toEqual(baseCircle.members)
+      expect(updated).toBe(baseCircle)
     })
   })
 

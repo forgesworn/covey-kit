@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "keys": {
+    "rootHex": "0101010101010101010101010101010101010101010101010101010101010101",
+    "circleId": "compat-circle",
+    "epochs": [
+      { "epoch": 0, "seedHex": "ddbdcb3ed07058fcc347a509a4f364d493d4caf6e1af56cdb03c1eeb4689f24a" },
+      { "epoch": 1, "seedHex": "2d91c65419a1b32006a44207f4b01482fef38daab15e7207b6734edc274a462b" }
+    ],
+    "inboxSeedHex": "0202020202020202020202020202020202020202020202020202020202020202",
+    "inboxSecretHex": "f2fa767ee1d4e96677073c6925140843e14c8067458e1a92ab3c0dc4a9f97c0b",
+    "inboxPublicHex": "387e64581357c04a868f5292f7aee91ad753dbf2b97f9a21b2f9ab108c307dc4",
+    "personalPubkey": "0303030303030303030303030303030303030303030303030303030303030303",
+    "personalInboxTag": "338298de63eb3d74b4c77d90573ece4626ee05ea3728b383e40def92bf00ead2"
+  },
+  "wordCode": {
+    "entropy": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "words": ["burrow", "food", "name", "supply", "buzz", "forum"],
+    "seedHex": "8687e26f29a50d0960c221c3b5b328c50d68ebbb3b42a7e55655b45dd9167d06",
+    "inviteTag": "b19652b0235399f9303ad85dbbe714c4712c6bdc180732e8393856cfa23ba29d",
+    "parkSecretHex": "952fe8d7def13739cf6a5140eac8d07b5e3213f822d2810f44e5f9f6d882f207"
+  },
+  "circle": {
+    "name": "Compatibility circle",
+    "nowSec": 1784332800,
+    "creator": {
+      "pk": "2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991",
+      "role": "guardian",
+      "name": "Creator"
+    }
+  },
+  "personalInbox": {
+    "senderSecret": "4444444444444444444444444444444444444444444444444444444444444444",
+    "senderPublic": "2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991",
+    "recipientSecret": "5555555555555555555555555555555555555555555555555555555555555555",
+    "recipientPublic": "9ac20335eb38768d2052be1dbbc3c8f6178407458e51e6b4ad22f1d91758895b",
+    "wrongSecret": "6666666666666666666666666666666666666666666666666666666666666666",
+    "routeTag": "178d25bcd4d458364a89f87e49a3b17674806f89f780bcc2d10b09d6a45577a6",
+    "invite": {
+      "t": "invite",
+      "id": "compat-circle",
+      "s": "7777777777777777777777777777777777777777777777777777777777777777",
+      "n": "Compatibility circle",
+      "m": "roommates",
+      "x": 1784937600
+    },
+    "reseed": {
+      "t": "reseed",
+      "id": "compat-circle",
+      "s": "8888888888888888888888888888888888888888888888888888888888888888",
+      "n": "Compatibility circle",
+      "m": "roommates"
+    }
+  }
+}
