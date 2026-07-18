@@ -1,0 +1,30 @@
+{
+  "name": "@forgesworn/covey-kit",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@forgesworn/roost-kit": "*",
+    "@noble/hashes": "^2.0.1",
+    "canary-kit": "^2.10.0",
+    "nostr-tools": "^2.23.9",
+    "nsec-tree": "^1.5.1"
+  }
+}
