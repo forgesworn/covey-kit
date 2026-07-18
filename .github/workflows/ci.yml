@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      # @forgesworn/covey-kit depends on the private @forgesworn/roost-kit
+      # over git. npm normalises git+https://github.com/ URLs to
+      # ssh://git@github.com/, so all three github.com URL forms are
+      # rewritten here to inject a read-only PAT over HTTPS — otherwise
+      # npm's normalised ssh:// form needs an SSH key the runner doesn't
+      # have. Requires repo secret FORGESWORN_READ_PAT (fine-grained, read
+      # on forgesworn/roost-kit). NOT YET PROVISIONED on this repo as of
+      # 2026-07-18 — until it is added, npm ci is expected to fail fetching
+      # @forgesworn/roost-kit.
+      - name: Authenticate git for private @forgesworn deps
+        # Pass the PAT via env (not inline ${{ }} interpolation into the
+        # script) so the secret never lands in the rendered command line.
+        env:
+          FORGESWORN_READ_PAT: ${{ secrets.FORGESWORN_READ_PAT }}
+        run: |
+          AUTH="https://x-access-token:${FORGESWORN_READ_PAT}@github.com/"
+          git config --global url."$AUTH".insteadOf "https://github.com/"
+          git config --global --add url."$AUTH".insteadOf "ssh://git@github.com/"
+          git config --global --add url."$AUTH".insteadOf "git@github.com:"
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm pack --dry-run
