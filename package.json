@@ -1,7 +1,7 @@
 {
   "name": "@forgesworn/covey-kit",
   "version": "0.1.0",
-  "license": "MIT",
+  "description": "Private circle primitives for Nostr clients: derived keys, roles, invites, personal inboxes, word codes, and convergent circle state.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,19 +12,57 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "nostr",
+    "circles",
+    "privacy",
+    "invites",
+    "key-derivation",
+    "gift-wrap"
+  ],
+  "author": "forgesworn",
+  "license": "MIT",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
   },
   "dependencies": {
-    "@forgesworn/roost-kit": "*",
+    "@forgesworn/roost-kit": "git+https://github.com/forgesworn/roost-kit.git#3d751cf1e293ad899bde35147591481f79d30c82",
     "@noble/hashes": "^2.0.1",
     "canary-kit": "^2.10.0",
     "nostr-tools": "^2.23.9",
     "nsec-tree": "^1.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "provenance": true
+  },
+  "funding": {
+    "type": "lightning",
+    "url": "lightning:profusemeat89@walletofsatoshi.com"
+  },
+  "homepage": "https://github.com/forgesworn/covey-kit#readme",
+  "bugs": {
+    "url": "https://github.com/forgesworn/covey-kit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forgesworn/covey-kit.git"
   }
 }
