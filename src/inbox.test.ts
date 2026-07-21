@@ -134,6 +134,28 @@ describe('signer-based NIP-59 gift-wrapped invites', () => {
     const wrap = await buildInviteWrap(alice, bob.pubkey, custom)
     expect(await readInvite(bob, wrap)).toEqual({ ...custom, from: alice.pubkey })
   })
+
+  it('carries a reseed removal list (`r`) through the wire so recipients can evict members', async () => {
+    const alice = signer()
+    const bob = signer()
+    const removed = ['ab'.repeat(32), 'cd'.repeat(32)]
+    const reseed: InvitePayload = { t: 'reseed', id: 'circle-1', s: 'ff'.repeat(32), n: 'X', m: 'nightout', r: removed }
+    const wrap = await buildReseedWraps(alice, [bob.pubkey], reseed)
+    expect(await readInvite(bob, wrap[0])).toEqual({ ...reseed, from: alice.pubkey })
+  })
+
+  it('ignores `r` on an invite, and drops non-hex entries on a reseed', async () => {
+    const alice = signer()
+    const bob = signer()
+    // `r` is reseed-only — an invite must not carry a removal list.
+    const invite = { t: 'invite', id: 'c', s: SEED, n: 'N', m: 'family', r: ['ab'.repeat(32)] } as InvitePayload
+    const iWrap = await buildInviteWrap(alice, bob.pubkey, invite)
+    expect(await readInvite(bob, iWrap)).toEqual({ t: 'invite', id: 'c', s: SEED, n: 'N', m: 'family', from: alice.pubkey })
+    // Malformed entries are filtered; an all-garbage list collapses to absent.
+    const reseed = { t: 'reseed', id: 'c', s: SEED, n: 'N', m: 'family', r: ['not-hex', 123, 'ab'.repeat(32)] } as unknown as InvitePayload
+    const rWrap = await buildReseedWraps(alice, [bob.pubkey], reseed)
+    expect(await readInvite(bob, rWrap[0])).toEqual({ t: 'reseed', id: 'c', s: SEED, n: 'N', m: 'family', r: ['ab'.repeat(32)], from: alice.pubkey })
+  })
 })
 
 describe('readInviteViaRef — the word-invite second hop (audit F4)', () => {
