@@ -85,6 +85,10 @@ export interface InvitePayload {
   n: string // circle name
   m: string // circle mode — a flock-specific 'family'|'nightout' union upstream; generalised to `string` here (see task 7 brief)
   x?: number // transient expiry (unix sec), if any
+  r?: string[] // reseed only: member pubkeys removed in/before this reseed. A durable
+                // removal marker — a recipient drops these from its roster so a rotated
+                // seed is never re-wrapped back to an evicted member. Additive & optional:
+                // older clients ignore it (they still adopt the new seed).
 }
 
 const SEED_RE = /^[0-9a-f]{64}$/
@@ -97,6 +101,9 @@ function validateInvitePayload(o: unknown): InvitePayload | null {
   if (typeof o !== 'object' || o === null) return null
   const r = o as Record<string, unknown>
   if ((r.t === 'invite' || r.t === 'reseed') && typeof r.id === 'string' && typeof r.s === 'string' && SEED_RE.test(r.s)) {
+    const removed = r.t === 'reseed' && Array.isArray(r.r)
+      ? r.r.filter((x): x is string => typeof x === 'string' && SEED_RE.test(x))
+      : []
     return {
       t: r.t,
       id: r.id,
@@ -104,6 +111,7 @@ function validateInvitePayload(o: unknown): InvitePayload | null {
       n: typeof r.n === 'string' ? r.n : 'Circle',
       m: typeof r.m === 'string' ? r.m : 'family',
       ...(typeof r.x === 'number' ? { x: r.x } : {}),
+      ...(removed.length ? { r: removed } : {}),
     }
   }
   return null
