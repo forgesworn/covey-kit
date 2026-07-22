@@ -3,7 +3,7 @@
 Instructions in this file apply to the entire repository.
 
 ## Project Summary
-- Private circle primitives for Nostr clients: derived keys, role-aware circle state, personal inboxes, and word-code invites — extracted from Flock for reuse by Fledgling and other ForgeSworn clients.
+- Private circle primitives for Nostr clients: derived keys, role-aware circle state, personal inboxes, and word-code invites — extracted from Flock for reuse by other ForgeSworn clients.
 - Framework-free: owns no UI, storage, relay selection, or long-lived identity material. Transport (gift-wrapping, relay I/O) is delegated to `@forgesworn/roost-kit`.
 - ESM-only package (`"type": "module"`).
 - Requires Node.js 24+.

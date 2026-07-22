@@ -4,7 +4,7 @@ Private circle primitives for Nostr clients: deterministic circle and inbox
 keys, local signers, role-aware circle state, personal-inbox payloads, direct
 messages, private location shares, and speakable word-code invites.
 
-Covey was extracted from Flock for reuse by Fledgling and other clients. It is
+Covey was extracted from Flock for reuse by other ForgeSworn clients. It is
 framework-free and owns no UI, storage, relay selection, or long-lived identity
 material. Transport is delegated to
 [`@forgesworn/roost-kit`](https://github.com/forgesworn/roost-kit).

@@ -2,7 +2,7 @@
 
 > Building private circles for Nostr clients — family groups, friend circles, app-specific contact lists — where membership must actually change (not just a public follow list) without leaking the roster or a member's real pubkey to the relay? covey-kit is a framework-free toolkit for that: deterministic circle-key derivation recoverable from one local root secret (no stored randomness), role-aware circle state with a latest-wins merge across devices, gift-wrapped personal inboxes routed by a derived tag instead of a pubkey, and six-word spoken invite codes that never carry the circle secret itself.
 
-Extracted from Flock for reuse by Fledgling and other ForgeSworn clients. Transport (gift-wrapping, relay I/O) is delegated to [`@forgesworn/roost-kit`](https://github.com/forgesworn/roost-kit) — covey-kit itself owns no UI, storage, relay selection, or long-lived identity material.
+Extracted from Flock for reuse by other ForgeSworn clients. Transport (gift-wrapping, relay I/O) is delegated to [`@forgesworn/roost-kit`](https://github.com/forgesworn/roost-kit) — covey-kit itself owns no UI, storage, relay selection, or long-lived identity material.
 
 ESM-only, Node 24+. Single entry point — no subpath exports.
 
