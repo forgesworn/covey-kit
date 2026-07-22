@@ -1,0 +1,106 @@
+# covey-kit
+
+> Building private circles for Nostr clients — family groups, friend circles, app-specific contact lists — where membership must actually change (not just a public follow list) without leaking the roster or a member's real pubkey to the relay? covey-kit is a framework-free toolkit for that: deterministic circle-key derivation recoverable from one local root secret (no stored randomness), role-aware circle state with a latest-wins merge across devices, gift-wrapped personal inboxes routed by a derived tag instead of a pubkey, and six-word spoken invite codes that never carry the circle secret itself.
+
+Extracted from Flock for reuse by Fledgling and other ForgeSworn clients. Transport (gift-wrapping, relay I/O) is delegated to [`@forgesworn/roost-kit`](https://github.com/forgesworn/roost-kit) — covey-kit itself owns no UI, storage, relay selection, or long-lived identity material.
+
+ESM-only, Node 24+. Single entry point — no subpath exports.
+
+## Install
+
+npm install @forgesworn/covey-kit
+
+Not yet published to npm — until then, pin an immutable Git commit rather than a branch.
+
+## Security boundary
+
+- covey-kit does not persist secrets or pick relays — the caller protects the circle-root and signer material, and enforces authorisation before applying membership changes.
+- All sensitive payloads must travel over the encrypted Roost (NIP-59 gift-wrap) transport — covey-kit builds the wraps but does not publish them.
+- A word code is a rendezvous credential, not the circle secret: the parked reference carries a disposable one-time key (never the real seed) and is deleted on successful fetch where the relay honours NIP-09. It is deliberately weaker than the full 256-bit invite channel — offer both, don't rely on the word code alone.
+
+## Exports
+
+### Derived keys
+- fromHex(hex) → Uint8Array
+- toHex(bytes) → hex string
+- deriveCircleSeed(circleRootHex, circleId, epoch) → 64-hex seed (deterministic; reseed = epoch + 1)
+- deriveInbox(seedHex) → { sk: Uint8Array, pk: string } — the shared group-inbox keypair every member re-derives from the same seed
+- personalInboxTag(pubHex) → 64-hex routing tag (stable, non-reversible; stands in for a member's real pubkey on the wire)
+- class LocalSigner implements Signer — holds a hex secret key in memory; `.pubkey`, `.secretKeyHex`, `signEvent()`, `nip44Encrypt()`, `nip44Decrypt()`
+- makeLocalSigner(skHex) → Signer
+
+### Circle state
+- createCircle({ id, name, rootHex, creator, nowSec }) → Circle — seedHex derived at epoch 0, creator is the first member
+- circleFromInvite({ id, s, n }, self, nowSec) → Circle — joins from an invite payload; full roster arrives later via config sync
+- applyReseed(circle, { id, s }, nowSec) → Circle — bumps epoch, replaces seedHex
+- upsertMember(circle, member, by, nowSec) → Circle
+- removeMember(circle, pk, by, nowSec) → Circle
+- buildConfig(circle) → CircleConfig
+- mergeConfig(circle, incoming) → Circle — latest-wins by `updatedAt` (ties broken by the smaller `by`); invalid shape, wrong `id`, a bad role, or a bad pubkey all return the circle unchanged
+- Types: `Role` (`'guardian' | 'child' | 'peer'`), `CircleMember`, `Circle`, `CircleConfig`
+
+### Roles
+- guardians(circle) → CircleMember[]
+- isGuardian(circle, pk) → boolean
+
+### Invites & word codes
+- buildInviteWrap(signer, recipientPk, payload) → Promise<SignedEvent>
+- buildReseedWraps(signer, recipientPks, payload) → Promise<SignedEvent[]>
+- readInvite(signer, wrap) → Promise<(InvitePayload & { from: string }) | null>
+- readInviteViaRef(refSk, wrap) → Promise<(InvitePayload & { from: string }) | null> — the word-code second hop, where there's no real Signer yet
+- newWordCode(count?) → string[] (default 6 words, 66 bits)
+- wordCodeFromEntropy(entropy, count?) → string[]
+- suggestWords(prefix, limit?) → string[] — type-ahead; an empty prefix suggests nothing
+- normaliseWordCode(input) → string[] — throws, naming the bad word
+- deriveWordCodeSeed(words) → Promise<64-hex seed> (scrypt-stretched)
+- wordInviteTag(codeSeedHex) → string — public relay tag the parked reference is filed under
+- buildWordInviteRef(codeSeedHex, refSkHex, nowSec) → Promise<unsigned event> — parks a one-time reference key, never the circle seed
+- readWordInviteRef(codeSeedHex, event) → Promise<WordInviteRef> — throws if the code is wrong
+- wordInviteParkKey(codeSeedHex) → Uint8Array — deterministic signing key for the parked event, so a legitimate joiner can delete it on fetch
+- buildWordInviteDeletion(eventId, nowSec) → unsigned NIP-09 deletion event
+- WORD_INVITE — `{ words: 6, kind: 8078, ttlSeconds: 900 }`
+- Type: `WordInviteRef`
+
+### Personal inboxes
+- sendToPersonalInbox(signer, recipientPk, payload) → Promise<SignedEvent> — generic gift-wrap-to-one-recipient mechanism
+- readFromPersonalInbox(signer, wrap, validate) → Promise<(T & { from: string }) | null>
+- buildDmWrap(signer, recipientPk, { circleId, text }) → Promise<SignedEvent> — free-text direct message, capped at 500 characters
+- readDmWrap(signer, wrap) → Promise<DirectMessage | null>
+- buildPrivateLocationWrap(signer, recipientPk, { geohash, precision }) → Promise<SignedEvent> — one-shot exact location to one recipient, never the shared circle inbox
+- readPrivateLocationWrap(signer, wrap) → Promise<PrivateLocationShare | null>
+- Types: `InvitePayload`, `DirectMessage`, `PrivateLocationShare`
+
+## Quick Examples
+
+```typescript
+import {
+  createCircle, upsertMember, guardians, deriveInbox,
+  makeLocalSigner, buildDmWrap, newWordCode, deriveWordCodeSeed,
+} from '@forgesworn/covey-kit'
+
+const nowSec = Math.floor(Date.now() / 1000)
+const rootHex = '11'.repeat(32) // this device's local circle-root secret (64-hex)
+const me = { pk: 'aa'.repeat(32), role: 'guardian' as const, name: 'Me' }
+
+// Create a circle — seedHex is derived from (rootHex, id, epoch), so it's
+// recoverable from the root alone; nothing extra needs backing up.
+const circle = createCircle({ id: 'family', name: 'Family', rootHex, creator: me, nowSec })
+
+// Add a member (latest-wins config bookkeeping is tracked automatically)
+const friend = { pk: 'bb'.repeat(32), role: 'peer' as const }
+const updated = upsertMember(circle, friend, me.pk, nowSec)
+guardians(updated) // [{ pk: 'aa...a', role: 'guardian', name: 'Me' }]
+
+// The shared group-inbox keypair every member re-derives from the same seed
+const inbox = deriveInbox(updated.seedHex) // { sk, pk }
+
+// A six-word spoken invite code, stretched into a group seed
+// (top-level await — this runs as an ES module)
+const words = newWordCode() // e.g. ['orbit', 'cedar', 'plank', 'ferry', 'amber', 'kiln']
+const codeSeedHex = await deriveWordCodeSeed(words)
+
+// Send a private DM to one member — encrypted to their real key, filed at the
+// relay under their derived personalInboxTag, never their npub
+const signer = makeLocalSigner('cc'.repeat(32))
+const wrap = await buildDmWrap(signer, friend.pk, { circleId: updated.id, text: 'On my way' })
+```
