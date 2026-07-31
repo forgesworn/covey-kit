@@ -17,7 +17,7 @@
 // `personalInboxTag(recipientPk)`, same JSON payload shapes — only the internal
 // TypeScript factoring differs.
 
-import { giftWrap, giftUnwrap, rawNip44Decrypt } from '@forgesworn/roost-kit'
+import { giftWrap, giftUnwrap, rawNip44Decrypt, WRAP_EXPIRY_SECONDS } from '@forgesworn/roost-kit'
 import type { Signer, SignedEvent, Rumor } from '@forgesworn/roost-kit'
 import { personalInboxTag } from './keys.js'
 
@@ -32,9 +32,30 @@ const RUMOR_KIND = 14
  *  inbox. Encrypted to their real key (via the signer); filed at the relay
  *  under `personalInboxTag(recipientPk)` so the npub itself never lands on
  *  the wire. Inner rumor is always `kind: 14`, discriminated by the payload's
- *  own shape (e.g. a `t` field) on the way back out. */
-export function sendToPersonalInbox(signer: Signer, recipientPk: string, payload: unknown): Promise<SignedEvent> {
-  return giftWrap(signer, recipientPk, { kind: RUMOR_KIND, content: JSON.stringify(payload), tags: [] }, personalInboxTag(recipientPk))
+ *  own shape (e.g. a `t` field) on the way back out.
+ *
+ *  `expirySeconds` is the NIP-40 retention window, defaulting to roost-kit's
+ *  `WRAP_EXPIRY_SECONDS` so an existing caller is unaffected. It is plumbed
+ *  through EVERY builder in this file rather than only the ones that seemed to
+ *  need it, and that is the point: roost-kit requires ONE WINDOW PER
+ *  APPLICATION across every wrap type it sends, because a per-type window is a
+ *  type-tell — an observer who cannot read a wrap could still sort an app's
+ *  traffic into invites, DMs and location shares by expiry delta alone. A
+ *  partial plumbing would hand a caller exactly that leak while looking like a
+ *  feature. */
+export function sendToPersonalInbox(
+  signer: Signer,
+  recipientPk: string,
+  payload: unknown,
+  expirySeconds?: number,
+): Promise<SignedEvent> {
+  return giftWrap(
+    signer,
+    recipientPk,
+    { kind: RUMOR_KIND, content: JSON.stringify(payload), tags: [] },
+    personalInboxTag(recipientPk),
+    expirySeconds ?? WRAP_EXPIRY_SECONDS,
+  )
 }
 
 /** Unwrap + decrypt with `decrypt`, then hand the rumor to `parse` (already
@@ -120,13 +141,23 @@ function validateInvitePayload(o: unknown): InvitePayload | null {
 /** Gift-wrap an invite/reseed payload to a single recipient pubkey via the signer.
  *  Encrypted to their real key; filed at the relay under `personalInboxTag` so the
  *  npub itself is never exposed. */
-export function buildInviteWrap(signer: Signer, recipientPk: string, payload: InvitePayload): Promise<SignedEvent> {
-  return sendToPersonalInbox(signer, recipientPk, payload)
+export function buildInviteWrap(
+  signer: Signer,
+  recipientPk: string,
+  payload: InvitePayload,
+  expirySeconds?: number,
+): Promise<SignedEvent> {
+  return sendToPersonalInbox(signer, recipientPk, payload, expirySeconds)
 }
 
 /** Gift-wrap a reseed payload to many recipients. */
-export function buildReseedWraps(signer: Signer, recipientPks: string[], payload: InvitePayload): Promise<SignedEvent[]> {
-  return Promise.all(recipientPks.map((pk) => buildInviteWrap(signer, pk, payload)))
+export function buildReseedWraps(
+  signer: Signer,
+  recipientPks: string[],
+  payload: InvitePayload,
+  expirySeconds?: number,
+): Promise<SignedEvent[]> {
+  return Promise.all(recipientPks.map((pk) => buildInviteWrap(signer, pk, payload, expirySeconds)))
 }
 
 /** Unwrap a gift wrap addressed to us (via the signer); returns the invite payload
@@ -172,9 +203,14 @@ const MAX_DM_LEN = 500
 
 /** Gift-wrap a private direct message to one recipient. Encrypted to their real key;
  *  filed under `personalInboxTag` so the npub stays off the wire. Only they can read it. */
-export function buildDmWrap(signer: Signer, recipientPk: string, msg: { circleId: string; text: string }): Promise<SignedEvent> {
+export function buildDmWrap(
+  signer: Signer,
+  recipientPk: string,
+  msg: { circleId: string; text: string },
+  expirySeconds?: number,
+): Promise<SignedEvent> {
   const payload: DmPayload = { t: 'dm', c: msg.circleId, text: msg.text.trim().slice(0, MAX_DM_LEN) }
-  return sendToPersonalInbox(signer, recipientPk, payload)
+  return sendToPersonalInbox(signer, recipientPk, payload, expirySeconds)
 }
 
 /** Unwrap a personal-inbox wrap as a direct message; null if it isn't one (or isn't
@@ -213,9 +249,14 @@ export interface PrivateLocationShare { from: string; geohash: string; precision
 /** Gift-wrap a one-shot exact location to one recipient. Encrypted to their real
  *  key; filed under `personalInboxTag` so the npub stays off the wire. Only they
  *  can read it — it never rides the circle's shared inbox. */
-export function buildPrivateLocationWrap(signer: Signer, recipientPk: string, share: { geohash: string; precision: number }): Promise<SignedEvent> {
+export function buildPrivateLocationWrap(
+  signer: Signer,
+  recipientPk: string,
+  share: { geohash: string; precision: number },
+  expirySeconds?: number,
+): Promise<SignedEvent> {
   const payload: LocationSharePayload = { t: 'loc', geohash: share.geohash, precision: share.precision }
-  return sendToPersonalInbox(signer, recipientPk, payload)
+  return sendToPersonalInbox(signer, recipientPk, payload, expirySeconds)
 }
 
 /** Unwrap a personal-inbox wrap as a private location share; null if it isn't

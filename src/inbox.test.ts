@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure'
-import { giftUnwrap } from '@forgesworn/roost-kit'
+import { giftUnwrap, WRAP_EXPIRY_SECONDS } from '@forgesworn/roost-kit'
 import { makeLocalSigner } from './signer-local.js'
 import {
   sendToPersonalInbox,
@@ -251,5 +251,61 @@ describe('private location share (PM "Come to me", personal-inbox gift-wrap)', (
     expect(await readInvite(bob, loc)).toBeNull()
     const dm = await buildDmWrap(alice, bob.pubkey, { circleId: 'c', text: 'hi' })
     expect(await readPrivateLocationWrap(bob, dm)).toBeNull()
+  })
+})
+
+describe('the NIP-40 retention window is the caller’s to choose', () => {
+  // roost-kit requires ONE WINDOW PER APPLICATION across every wrap type it
+  // sends: a per-type window is a type-tell, letting an observer who cannot read
+  // a wrap still sort an app's traffic into invites, DMs and location shares by
+  // expiry delta alone. This kit therefore plumbs the option through EVERY
+  // builder, and these cases pin that — a partial plumbing would hand a caller
+  // exactly that leak while looking like a feature.
+
+  const delta = (wrap: { tags: string[][]; created_at: number }): number =>
+    Number(wrap.tags.find((t) => t[0] === 'expiration')?.[1]) - wrap.created_at
+
+  const recipient = () => getPublicKey(generateSecretKey())
+  const invite: InvitePayload = { t: 'inv', c: 'circle-id', s: 'aa'.repeat(32) } as InvitePayload
+
+  it('⚠️ DEFAULTS UNCHANGED on every builder — an existing caller sees no difference', async () => {
+    // ⚠️ Flock and Fledgling wrap safety, invite and live-location traffic
+    // through these functions. If adding the option moved their window, the
+    // change would be the breaking one it exists to avoid.
+    const s = signer()
+    const wraps = await Promise.all([
+      sendToPersonalInbox(s, recipient(), { t: 'x' }),
+      buildInviteWrap(s, recipient(), invite),
+      buildDmWrap(s, recipient(), { circleId: 'c', text: 'hello' }),
+      buildPrivateLocationWrap(s, recipient(), { geohash: 'gcpuv', precision: 5 }),
+    ])
+    for (const w of wraps) expect(delta(w)).toBe(WRAP_EXPIRY_SECONDS)
+    const reseeds = await buildReseedWraps(s, [recipient(), recipient()], invite)
+    for (const w of reseeds) expect(delta(w)).toBe(WRAP_EXPIRY_SECONDS)
+  })
+
+  it('⚠️ carries a chosen window through EVERY builder, so one app has one window', async () => {
+    // ⚠️ The mutant is dropping `expirySeconds` from any single builder — which
+    // would leave that payload type wrapped at the default while the rest moved,
+    // i.e. precisely the type-tell.
+    const s = signer()
+    const chosen = 45 * 86_400
+    const wraps = await Promise.all([
+      sendToPersonalInbox(s, recipient(), { t: 'x' }, chosen),
+      buildInviteWrap(s, recipient(), invite, chosen),
+      buildDmWrap(s, recipient(), { circleId: 'c', text: 'hello' }, chosen),
+      buildPrivateLocationWrap(s, recipient(), { geohash: 'gcpuv', precision: 5 }, chosen),
+    ])
+    for (const w of wraps) expect(delta(w)).toBe(chosen)
+    const reseeds = await buildReseedWraps(s, [recipient(), recipient()], invite, chosen)
+    for (const w of reseeds) expect(delta(w)).toBe(chosen)
+  })
+
+  it('still round-trips with a custom window — the payload is unaffected by the tag', async () => {
+    const sender = signer()
+    const rk = generateSecretKey()
+    const wrap = await buildDmWrap(sender, getPublicKey(rk), { circleId: 'c', text: 'still readable' }, 45 * 86_400)
+    const read = await readDmWrap(makeLocalSigner(hex(rk)), wrap)
+    expect(read?.text).toBe('still readable')
   })
 })
