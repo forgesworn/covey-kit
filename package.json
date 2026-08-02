@@ -40,7 +40,7 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@forgesworn/roost-kit": "git+https://github.com/forgesworn/roost-kit.git#e95c61340211af756f45dec0ab01f96dba506986",
+    "@forgesworn/roost-kit": "git+https://github.com/forgesworn/roost-kit.git#27d33dd671a0bf0fa24f4ab8bb813c88749852c2",
     "@noble/hashes": "^2.0.1",
     "canary-kit": "^2.10.0",
     "nostr-tools": "^2.23.9",
